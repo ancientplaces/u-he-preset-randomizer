@@ -2,7 +2,7 @@
 
 This guide is for analyzing, generating, and editing u-he Zebra 3 presets in `.h2p` format.
 
-**Version note:** this guide was first written against the Zebra 3 public beta, before the 3.0.0 release (2026-04-20). It has since been checked against a factory preset saved with 3.0.1 (`PCore/Rev=22165`). Section 10 lists what changed in 3.0.1 and 3.0.2. Where this guide and a preset file disagree, trust the file.
+**Version note:** this guide was first written against the Zebra 3 public beta, before the 3.0.0 release (2026-04-20). It has since been checked against a factory preset saved with 3.0.1 (`PCore/Rev=22165`) and re-saved with 3.0.2 (`Rev=22175`). Section 10 lists what changed in 3.0.1 and 3.0.2. Where this guide and a preset file disagree, trust the file.
 
 **Priority warning:** In Zebra 3, the sound is usually defined first by the oscillator engine, then by its direct modulation, then by oscillator FX / filters, and only then by global effects. Do not treat Zebra 3 like a subtractive synth with "oscillator -> filter -> FX" only. The oscillator source, renderer, curve position, and modulation architecture carry much more of the identity.
 
@@ -638,6 +638,7 @@ Sources: u-he's 3.0.1 announcement (July 2026) and the 3.0.1 (rev. 22165) and 3.
 ### 3.0.2
 
 - A high-contrast "Funktional" UI theme, a "Stop All Notes" option, an ARM build in the Windows installer, and experimental Linux drag-and-drop. None of these change preset content.
+- Confirmed by re-saving the same factory preset in 3.0.2 (rev 22175): the text section is identical to the 3.0.1 save except `PCore/Rev`. The encoded tail is re-encoded (different bytes, same declared length), so never compare tails byte for byte to decide whether two presets differ.
 
 ### Candidate keys for the 3.0.1 controls
 
