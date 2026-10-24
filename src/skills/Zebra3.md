@@ -2,6 +2,8 @@
 
 This guide is for analyzing, generating, and editing u-he Zebra 3 presets in `.h2p` format.
 
+**Version note:** this guide was first written against the Zebra 3 public beta, before the 3.0.0 release (2026-04-20). Section 10 lists what changed in 3.0.1 and 3.0.2. Where this guide and a preset file disagree, trust the file.
+
 **Priority warning:** In Zebra 3, the sound is usually defined first by the oscillator engine, then by its direct modulation, then by oscillator FX / filters, and only then by global effects. Do not treat Zebra 3 like a subtractive synth with "oscillator -> filter -> FX" only. The oscillator source, renderer, curve position, and modulation architecture carry much more of the identity.
 
 ## 1. What Makes Zebra 3 Special
@@ -62,7 +64,7 @@ Meaning:
 - `#Vers=1`: preset format version
 - `#Endian=little`: encoding hint
 - `#nm=42`: number of modulation sources defined in the `#ms` list
-- `#ms=...`: modulation source index table
+- `#ms=...`: modulation source index table. Every file carries its own copy; resolve source numbers from it (see section 3)
 - `#nv` / `#mv`: additional visible modulation-source declarations used by the UI
 
 ### 2.3 Module blocks
@@ -95,12 +97,14 @@ Like other modern u-he synths, Zebra 3 presets may end with encoded curve/layout
 
 ## 3. Modulation Source Index Map
 
-The example Zebra 3 presets in `tmp/Zebra 3/*.h2p.txt` use this source list:
+Source parameters (`PosSrc`, `FS1`, `Src1`, and so on) store a number that indexes the file's own `#ms=` list, counting from 0. Always resolve the number against the list in the file you are reading. Do not rely on the table below: the list can differ between builds, and Zebralette 3 uses a different, shorter list (18 entries, including `Constant`).
+
+A Zebra 3 beta preset saved with revision 20399 uses this list (`#nm=42`):
 
 ```text
 0 none, 1 ModWhl, 2 PitchW, 3 CtrlA, 4 CtrlB, 5 CtrlC, 6 CtrlD, 7 KeyFollow
 8 Gate, 9 Trigger, 10 Velocity, 11 Release, 12 Hold Pedal, 13 Pressure
-14 Constant, 15 Random, 16 Alternate, 17 ModNoise, 18 LFO 1, 19 LFO 2, 20 LFO 3, 21 LFO 4
+14 Voice Index, 15 Random, 16 Alternate, 17 ModNoise, 18 LFO 1, 19 LFO 2, 20 LFO 3, 21 LFO 4
 22 MSEG 1, 23 MSEG 2, 24 MSEG 3, 25 MSEG 4, 26 Envelope 1, 27 Envelope 2, 28 Envelope 3, 29 Envelope 4
 30 ModMath 1, 31 ModMath 2, 32 ModMath 3, 33 ModMath 4, 34 Mapper 1, 35 Mapper 2, 36 Mapper 3, 37 Mapper 4
 38 Pitch 1, 39 Pitch 2, 40 Pitch 3, 41 Pitch 4
@@ -108,7 +112,8 @@ The example Zebra 3 presets in `tmp/Zebra 3/*.h2p.txt` use this source list:
 
 Interpretation shortcuts:
 
-- `14 Constant`, `15 Random`, `16 Alternate`, `17 ModNoise` are common "movement without performance" sources.
+- Earlier versions of this guide listed index 14 as `Constant`. In the rev 20399 list, index 14 is `Voice Index`. Check the file.
+- `15 Random`, `16 Alternate`, `17 ModNoise` are common "movement without performance" sources. `14 Voice Index` gives each voice a different value, which is useful for per-voice spread.
 - `18-29` are the main internal animation sources.
 - `38-41` are special pitch-domain sources and often matter more than plain `KeyFollow`.
 
@@ -162,6 +167,8 @@ When reading a Zebra 3 patch, inspect these in order:
 ## 5. Data-Driven Norms From `tmp/paramsModel.compact.json`
 
 Use the model file to distinguish "normal" from "deliberately extreme".
+
+These averages were computed from a pre-release (beta) library. Rebuild the model from the current factory library before relying on exact numbers.
 
 ### 5.1 Oscillator norms
 
@@ -579,8 +586,10 @@ When modifying Zebra 3 presets, follow these rules:
 3. Prefer direct modulation fields for oscillator position, pitch, filter cutoff, and other high-resolution targets.
 4. Use matrix slots when you need `Via`, `Quantize`, `Rectify`, `SH`, or `Slew`.
 5. Preserve exact module names, parameter IDs, and destination strings.
-6. Do not edit encoded tail data unless the task is specifically about rebuilding curve/layout data.
-7. Be conservative with `Yellow`, modal resonance, comb feedback, and aggressive distortion: the manual explicitly warns these can get loud fast.
+6. Resolve every modulation-source number against the file's own `#ms=` list, never against a remembered table.
+7. Do not edit encoded tail data unless the task is specifically about rebuilding curve/layout data.
+8. From 3.0.1 on, presets store the Controls A–D macro settings. When editing or merging, keep those settings consistent with the patch's `Usage` text and matrix routes.
+9. Be conservative with `Yellow`, modal resonance, comb feedback, and aggressive distortion: the manual explicitly warns these can get loud fast.
 
 ## 9. Fast Analysis Workflow
 
@@ -599,3 +608,24 @@ When analyzing a new Zebra 3 preset, use this order:
 If you need to decide what matters most in one sentence:
 
 **In Zebra 3, first identify how the oscillator is being interpreted and animated, then read how the patch routes that motion through oscillator FX, filters, and the matrix.**
+
+## 10. Changes Since The Beta (3.0.1 and 3.0.2)
+
+Sources: u-he's 3.0.1 announcement (July 2026) and the 3.0.1 (rev. 22165) and 3.0.2 (rev. 22175) changelogs posted on the u-he KVR forum. The exact parameter names these changes add to the file are not yet confirmed here; read them from a preset saved in the current version.
+
+### 3.0.1
+
+- **Controls A–D are now macros stored in the preset**, with MIDI CC offsets. Before 3.0.1 they were global MIDI controls and were not saved with presets. Expect presets saved in 3.0.1 or later to carry this data; presets saved in 3.0.0 or the beta do not.
+- **MSEGs gained a global trigger option.** An MSEG can now run once for all voices rather than per voice.
+- **MPE options:** smoothing for per-voice pitch bend and for timbre.
+- **The modulation limits on FMO and envelope parameters were removed**, so more of those parameters accept modulation.
+- **Pitch modules have a new hidden parameter, "Hypercalibrate Time".**
+
+### 3.0.2
+
+- A high-contrast "Funktional" UI theme, a "Stop All Notes" option, an ARM build in the Windows installer, and experimental Linux drag-and-drop. None of these change preset content.
+
+### What this means for preset work
+
+- The `#Vers=1` header does not record which build saved a file. A preset with Controls A–D macro data was saved in 3.0.1 or later.
+- When generating presets for a 3.0.1+ user, start from a template saved in 3.0.1+ so the macro data is present and valid.

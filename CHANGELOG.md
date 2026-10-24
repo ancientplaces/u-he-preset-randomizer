@@ -1,5 +1,7 @@
 ## [unreleased]
 
+- **CHANGED**: Updated the Zebra 3 skill guide for releases 3.0.1 and 3.0.2: added a version note and a section on post-beta changes (Controls A–D macros stored in presets, MSEG global trigger, MPE smoothing, lifted FMO and envelope modulation limits), corrected modulation-source index 14 to `Voice Index` per a rev 20399 preset, and added an editing rule to resolve source indexes from each file's own `#ms=` list
+
 ## [1.2.0]
 
 - **FIXED**: CLI startup and config parsing by centralizing the yargs parser, handling numeric overrides consistently, and using a dedicated direct-execution helper for the CLI entrypoint
