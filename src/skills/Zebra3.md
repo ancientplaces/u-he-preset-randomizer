@@ -2,7 +2,7 @@
 
 This guide is for analyzing, generating, and editing u-he Zebra 3 presets in `.h2p` format.
 
-**Version note:** this guide was first written against the Zebra 3 public beta, before the 3.0.0 release (2026-04-20). Section 10 lists what changed in 3.0.1 and 3.0.2. Where this guide and a preset file disagree, trust the file.
+**Version note:** this guide was first written against the Zebra 3 public beta, before the 3.0.0 release (2026-04-20). It has since been checked against a factory preset saved with 3.0.1 (`PCore/Rev=22165`). Section 10 lists what changed in 3.0.1 and 3.0.2. Where this guide and a preset file disagree, trust the file.
 
 **Priority warning:** In Zebra 3, the sound is usually defined first by the oscillator engine, then by its direct modulation, then by oscillator FX / filters, and only then by global effects. Do not treat Zebra 3 like a subtractive synth with "oscillator -> filter -> FX" only. The oscillator source, renderer, curve position, and modulation architecture carry much more of the identity.
 
@@ -58,6 +58,8 @@ Typical Zebra 3 headers from the factory presets:
 #mv=...
 ```
 
+The build that saved a file is recorded in the module blocks, not the header: `#cm=PCore` carries `Rev=` (for example `Rev=22165` is 3.0.1). `#Vers=1` is the format version only.
+
 Meaning:
 
 - `#AM=Zebra3`: synth identifier
@@ -87,7 +89,19 @@ Important characteristics:
 - Parameter names must remain exact.
 - Matrix destinations are string-encoded, e.g. `Dest1=Filter1:Cut`.
 
-### 2.4 Binary / encoded tail
+### 2.4 Every slot is written, and some values are pointers
+
+A full preset writes every module slot the engine has (`Osc1`–`Osc4`, `FMO1`–`FMO4`, `Filter1`–`Filter6`, `Comb1`–`Comb4`, all 32 `MM` matrix slots, and so on), whether or not the patch uses it. A block's presence does not mean the module is in the grid. Unused slots usually hold default values (for example `Dest1=none:assigned`, `Source=0`).
+
+Which modules sit in the grid, in what order, and how they connect is stored in the encoded tail. The text blocks point to it:
+
+- `#cm=Grid` and `#cm=FXGrid`: `Grid`, `GStore`, `C-Ord`, `M-Ord`.
+- Curve and shape data: `Curve1`…`Curve16`, `Guide1`…`Guide3`, `CrvPos` in `O1Geo1`, `M1Geo1` and similar blocks.
+- Other data references, for example `Filter*/Coord`, `Modal*/MDFile1`/`MDFile2`, `Noise*/KVsc`, `MMap*/Stps`, `Scope/File`.
+
+These integers are indexes into the encoded data, not sound settings. Never change them, randomize them, or average them. Editing text parameters can change how existing modules sound, but cannot add a module to the grid or rewire it.
+
+### 2.5 Binary / encoded tail
 
 Like other modern u-he synths, Zebra 3 presets may end with encoded curve/layout data.
 
@@ -97,14 +111,14 @@ Like other modern u-he synths, Zebra 3 presets may end with encoded curve/layout
 
 ## 3. Modulation Source Index Map
 
-Source parameters (`PosSrc`, `FS1`, `Src1`, and so on) store a number that indexes the file's own `#ms=` list, counting from 0. Always resolve the number against the list in the file you are reading. Do not rely on the table below: the list can differ between builds, and Zebralette 3 uses a different, shorter list (18 entries, including `Constant`).
+Source parameters (`PosSrc`, `FS1`, `Source`, `PSrc`, and so on) store a number that indexes the file's own `#ms=` list, counting from 0. Always resolve the number against the list in the file you are reading: the list has changed between builds. Zebralette 3 uses a different, shorter list (18 entries).
 
-A Zebra 3 beta preset saved with revision 20399 uses this list (`#nm=42`):
+Release builds (checked against a factory preset saved with 3.0.1, rev 22165) use this list (`#nm=42`):
 
 ```text
 0 none, 1 ModWhl, 2 PitchW, 3 CtrlA, 4 CtrlB, 5 CtrlC, 6 CtrlD, 7 KeyFollow
 8 Gate, 9 Trigger, 10 Velocity, 11 Release, 12 Hold Pedal, 13 Pressure
-14 Voice Index, 15 Random, 16 Alternate, 17 ModNoise, 18 LFO 1, 19 LFO 2, 20 LFO 3, 21 LFO 4
+14 Constant, 15 Random, 16 Alternate, 17 ModNoise, 18 LFO 1, 19 LFO 2, 20 LFO 3, 21 LFO 4
 22 MSEG 1, 23 MSEG 2, 24 MSEG 3, 25 MSEG 4, 26 Envelope 1, 27 Envelope 2, 28 Envelope 3, 29 Envelope 4
 30 ModMath 1, 31 ModMath 2, 32 ModMath 3, 33 ModMath 4, 34 Mapper 1, 35 Mapper 2, 36 Mapper 3, 37 Mapper 4
 38 Pitch 1, 39 Pitch 2, 40 Pitch 3, 41 Pitch 4
@@ -112,8 +126,8 @@ A Zebra 3 beta preset saved with revision 20399 uses this list (`#nm=42`):
 
 Interpretation shortcuts:
 
-- Earlier versions of this guide listed index 14 as `Constant`. In the rev 20399 list, index 14 is `Voice Index`. Check the file.
-- `15 Random`, `16 Alternate`, `17 ModNoise` are common "movement without performance" sources. `14 Voice Index` gives each voice a different value, which is useful for per-voice spread.
+- Beta presets saved with rev 20399 have `Voice Index` at index 14 instead of `Constant`. Files from beta builds may therefore decode differently; check the file's own list.
+- `14 Constant`, `15 Random`, `16 Alternate`, `17 ModNoise` are common "movement without performance" sources.
 - `18-29` are the main internal animation sources.
 - `38-41` are special pitch-domain sources and often matter more than plain `KeyFollow`.
 
@@ -428,7 +442,7 @@ The manual positions Mappers as 128-value lookup tables for:
 Stats hint:
 
 - `MMap1/Mode` avg `1.50`
-- `MMap1/Stps` avg `62.00`
+- `MMap1/Stps` is a pointer into the encoded data (see 2.4), not a step count; ignore its average.
 
 Use Mappers when motion should feel intentional and repeatable rather than smooth.
 
@@ -611,7 +625,7 @@ If you need to decide what matters most in one sentence:
 
 ## 10. Changes Since The Beta (3.0.1 and 3.0.2)
 
-Sources: u-he's 3.0.1 announcement (July 2026) and the 3.0.1 (rev. 22165) and 3.0.2 (rev. 22175) changelogs posted on the u-he KVR forum. The exact parameter names these changes add to the file are not yet confirmed here; read them from a preset saved in the current version.
+Sources: u-he's 3.0.1 announcement (July 2026) and the 3.0.1 (rev. 22165) and 3.0.2 (rev. 22175) changelogs posted on the u-he KVR forum, plus one factory preset saved with rev 22165. Which file keys belong to which change is not yet confirmed; the candidates are listed below.
 
 ### 3.0.1
 
@@ -625,7 +639,17 @@ Sources: u-he's 3.0.1 announcement (July 2026) and the 3.0.1 (rev. 22165) and 3.
 
 - A high-contrast "Funktional" UI theme, a "Stop All Notes" option, an ARM build in the Windows installer, and experimental Linux drag-and-drop. None of these change preset content.
 
+### Candidate keys for the 3.0.1 controls
+
+A rev 22165 preset carries these blocks near the top. Their exact meanings are not yet confirmed:
+
+- `#cm=main`: `CcOp`.
+- `#cm=PCore`: `Rev` (saving build), `MidiA`, `MidiP`, `MPE_Tgt`, and `bCA`, `bCB`, `bCC`, `bCD` (one per Control A–D).
+- `#cm=MIDI`: `rCA` … `rCH` (eight values) and `aLbl`, `bLbl`, `cLbl`, `dLbl` (one per Control A–D).
+
+Preserve these blocks as they are unless the task is about the Controls A–D macros.
+
 ### What this means for preset work
 
-- The `#Vers=1` header does not record which build saved a file. A preset with Controls A–D macro data was saved in 3.0.1 or later.
+- Read `PCore/Rev` to tell which build saved a file. `#Vers=1` does not change between builds.
 - When generating presets for a 3.0.1+ user, start from a template saved in 3.0.1+ so the macro data is present and valid.
