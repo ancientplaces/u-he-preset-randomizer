@@ -101,7 +101,17 @@ Which modules sit in the grid, in what order, and how they connect is stored in 
 
 These integers are indexes into the encoded data, not sound settings. Never change them, randomize them, or average them. Editing text parameters can change how existing modules sound, but cannot add a module to the grid or rewire it.
 
-### 2.5 Binary / encoded tail
+### 2.5 Confirmed value meanings
+
+Checked against the Zebra 3.0.2 UI with a factory preset open:
+
+- `MMap*/Mode=3`: **Increment** (steps to the next value on each new note). `Num` is the step count.
+- `Env*/Var2Typ=4`: **Stretch**.
+- `Filter*/Mode=54`: **Cascade, LP 24 dB**.
+- `Dist*/Type=0`: **Soft Clip**.
+- `GridAmp/Amp1Src`…`Amp4Src` index the `#mv` list, not the `#ms` list (`5` = Envelope 1 in a file whose `#mv` list starts `Gate, MSEG 1…4, Envelope 1`).
+
+### 2.6 Binary / encoded tail
 
 Like other modern u-he synths, Zebra 3 presets may end with encoded curve/layout data.
 
